@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/OOP/">
+    <Project Path="OOP/OOP.DemoProject/OOP.DemoProject.csproj" />
+  </Folder>
+  <Folder Name="/SOLID/">
+    <Project Path="SOLID/SOLID.D/SOLID.D.csproj" />
+    <Project Path="SOLID/SOLID.I/SOLID.I.csproj" />
+    <Project Path="SOLID/SOLID.L/SOLID.L.csproj" />
+    <Project Path="SOLID/SOLID.O/SOLID.O.csproj" />
+    <Project Path="SOLID/SOLID.S/SOLID.S.csproj" />
+  </Folder>
+</Solution>
