@@ -9,4 +9,9 @@
     <Project Path="SOLID/SOLID.O/SOLID.O.csproj" />
     <Project Path="SOLID/SOLID.S/SOLID.S.csproj" />
   </Folder>
+  <Folder Name="/UML/">
+    <Project Path="UML/UML.Aggregation/UML.Aggregation.csproj" />
+    <Project Path="UML/UML.Association/UML.Association.csproj" />
+    <Project Path="UML/UML.Composition/UML.Composition.csproj" />
+  </Folder>
 </Solution>

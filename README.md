@@ -108,4 +108,152 @@ Core concepts and best practices for low level designs principles, including OOP
      paymentMethod.Pay(100);
      ```
 
+## UML Diagrams
+
+```mermaid
+classDiagram
+    class IPaymentMethod {
+        <<interface>>
+        +Pay(amount: decimal)
+    }
+
+    class Card {
+        <<abstract>>
+        -cardNo: string
+        -userName: string
+        +CardNo: string
+        +UserName: string
+        +DisplayCardDetails()
+        +DisplayCardDetails(invitedBy: string)
+        +DisplayCardBenefit()*
+        +DisplayCardLoyaltyRate()
+    }
+
+    class CreditCard {
+        +Pay(amount: decimal)
+        +DisplayCardBenefit()
+        +DisplayCardLoyaltyRate()
+    }
+
+    class DebitCard {
+        +Pay(amount: decimal)
+        +DisplayCardBenefit()
+    }
+
+    class UPI {
+        -upiId: string
+        +Pay(amount: decimal)
+    }
+
+    class PaymentService {
+        -paymentMethods: Dictionary
+        +AddPaymentMethod(methodName: string, paymentMethod: IPaymentMethod)
+        +MakePayment(methodName: string)
+    }
+
+    class Client {
+        -paymentService: PaymentService
+        +AddPaymentMethod(methodName: string, paymentMethod: IPaymentMethod)
+        +MakePayment(methodName: string)
+    }
+
+    Card <|-- CreditCard
+    Card <|-- DebitCard
+    IPaymentMethod <|.. CreditCard
+    IPaymentMethod <|.. DebitCard
+    IPaymentMethod <|.. UPI
+    PaymentService o-- IPaymentMethod : aggregate
+    Client --> PaymentService : uses
+```
+
+### UML Notation Definitions
+
+#### 1. Association
+
+- **Nature:** Structural link between independent classes. One class holds reference to another.
+- **Ownership:** No ownership. Peer-to-peer relationship.
+- **Lifecycle:** Independent. Destroying one object does not destroy other object.
+- **Example:**
+
+  ```csharp
+  public class Teacher
+  {
+      private Student _student;
+      public Teacher(Student student) => _student = student;
+  }
+  ```
+
+#### 2. Aggregation (Weak Has-A)
+
+- **Nature:** Loose whole-part relationship. Part can exist independently outside whole.
+- **Ownership:** Shared ownership. Part can belong to multiple wholes.
+- **Lifecycle:** Independent. Destroying whole container leaves part intact.
+- **Example:**
+
+  ```csharp
+  public class Department
+  {
+      private List<Teacher> _teachers;
+      public Department(List<Teacher> teachers) => _teachers = teachers;
+  }
+  ```
+
+#### 3. Composition (Strong Has-A)
+
+- **Nature:** Strict whole-part relationship. Part cannot exist without whole.
+- **Ownership:** Exclusive ownership. Container owns part directly.
+- **Lifecycle:** Dependent. Container creates and destroys part. Destroying container destroys part.
+- **Example:**
+
+  ```csharp
+  public class House
+  {
+      private readonly Room _room = new Room();
+  }
+  ```
+
+#### 4. Dependency (Uses-A)
+
+- **Nature:** Temporary interaction. Class uses another as method parameter, local variable, or return type.
+- **Ownership:** No ownership. Transient reference only.
+- **Lifecycle:** Temporary. Reference exists only during method execution scope.
+- **Example:**
+
+  ```csharp
+  public class Document
+  {
+      public void Print(Printer printer) => printer.Print(this);
+  }
+  ```
+
+#### 5. Generalization (Inheritance / Is-A)
+
+- **Nature:** Derived class inherits attributes and behaviors from base class.
+- **Ownership:** Is-a relationship. Subclass incorporates superclass state.
+- **Lifecycle:** Bound together. Creating subclass instance invokes base constructor.
+- **Example:**
+
+  ```csharp
+  public class Animal { }
+  public class Dog : Animal { }
+  ```
+
+#### 6. Realization (Implementation)
+
+- **Nature:** Concrete class implements contract defined by interface.
+- **Ownership:** Class fulfills interface contract signature.
+- **Lifecycle:** Independent instance creation, bound to interface contract at runtime.
+- **Example:**
+
+  ```csharp
+  public interface IPayable
+  {
+      void Pay(decimal amount);
+  }
+  public class CreditCard : IPayable
+  {
+      public void Pay(decimal amount) { }
+  }
+  ```
+
 ## SOLID Principles
