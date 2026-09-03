@@ -1,12 +1,11 @@
 using OOP.DemoProject.Interfaces;
 
-namespace OOP.DemoProject.Domains
+namespace OOP.DemoProject.Domains;
+
+public class Upi(string upiId) : IPaymentMethod
 {
-    public class UPI(string upiId) : IPaymentMethod
+    public void Pay(decimal amount)
     {
-        public void Pay(decimal amount)
-        {
-            Console.WriteLine($"Paid {amount} by UPI ID: {upiId}");
-        }
+        Console.WriteLine($"Paid {amount} by UPI ID: {upiId}");
     }
 }

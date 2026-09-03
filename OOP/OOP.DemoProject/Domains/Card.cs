@@ -1,32 +1,38 @@
-namespace OOP.DemoProject.Domains
+namespace OOP.DemoProject.Domains;
+
+public abstract class Card(string cardNo, string userName)
 {
-    public abstract class Card(string cardNo, string userName)
+    // Encapsulation - Backing Fields with Properties, Modifiers
+    private string _cardNo = cardNo;
+    private string _userName = userName;
+    public string CardNo { get => _cardNo; set => _cardNo = value; }
+    public string UserName { get => _userName; set => _userName = value; }
+
+    // Encapsulation - Auto-Implemented Properties
+    public string CardType { get; set; } = "Default Card Type";
+
+    // Abstraction - Abstract method to be implemented by derived classes
+    public abstract void AbstractDisplayCardBenefit();
+
+    // Polymorphism - Method Overriding / Runtime Polymorphism
+    public virtual void VirtualDisplayCardLoyaltyRate()
     {
-        private string _cardNo = cardNo;
-        private string _userName = userName;
+        Console.WriteLine($"Virtual Card Loyalty Rate: 1%"); // Default loyalty rate
+    }
 
-        // Encapsulation - Getter and Setters or Property
-        public string CardNo { get => _cardNo; set => _cardNo = value; }
-        public string UserName { get => _userName; set => _userName = value; }
+    public void NonVirtualDisplayCardLoyaltyRate()
+    {
+        Console.WriteLine($"Non-virtual Card Loyalty Rate: 1%"); // Default loyalty rate
+    }
 
-        // Polymorphism - Method Overloading
-        public void DisplayCardDetails()
-        {
-            Console.WriteLine($"Card Number: {CardNo}, User Name: {UserName}");
-        }
+    // Polymorphism - Method Overloading/ Compiletime Polymorphism
+    public void DisplayCardDetails()
+    {
+        Console.WriteLine($"Card Number: {CardNo}, User Name: {UserName}");
+    }
 
-        public void DisplayCardDetails(string invitedBy)
-        {
-            Console.WriteLine($"Card Number: {CardNo}, User Name: {UserName} invited by {invitedBy}");
-        }
-
-        // Abstraction - Abstract method to be implemented by derived classes
-        public abstract void DisplayCardBenefit();
-
-        // Abstraction 0 Virtual method that can be overridden by derived classes
-        public virtual void DisplayCardLoyaltyRate()
-        {
-            Console.WriteLine($"Card Loyalty Rate: 1%"); // Default loyalty rate
-        }
+    public void DisplayCardDetails(string invitedBy)
+    {
+        Console.WriteLine($"Card Number: {CardNo}, User Name: {UserName} invited by {invitedBy}");
     }
 }
