@@ -348,6 +348,8 @@ Serve only for Loose Coupling & High Cohesion
 
 - A class should have one, and only one, reason to change.
 - Aim: High Cohesion and Loose Coupling. Avoid "God Class" that handles multiple business concerns.
+- Usage:
+  - A class has its own related internal methods + data
 
 #### Before
 
@@ -432,6 +434,10 @@ internal class SmsService
 - Adding new code rather than changing existing code.
 - Things frequently changess, seperated from the part of things that don't change.
 - Things that don't change, do not touch.
+- Usage:
+  - Factory Design Pattern
+  - General Interface for variants
+  - Enum for variants
 
 #### Before
 
@@ -524,9 +530,139 @@ public class PaymentMethodHandlerFactory : IPaymentMethodHandlerFactory
 
 ### Liskov Substitution Principle
 
+- Subtypes must be substitutable for their base types without altering correctness.
+- Usage:
+  - Make sure the contracts of the base class or interface must be usable for the derived class
+  - Create extra interface captures that method.
+
 #### Before
 
+- `INotificationService` bundles both `SendEmail` and `SendSms`.
+- Subtypes like `AwsNotificationService` (only supports Email) and `VinaphoneNotificationService` (only supports SMS) are forced to implement unsupported methods by throwing `NotImplementedException`.
+- `UserService` expects any `INotificationService` to work, but replacing it with `AwsNotificationService` crashes when sending OTP (`SendSms`), and replacing with `VinaphoneNotificationService` crashes when registering user (`SendEmail`).
+
+```csharp
+public interface INotificationService
+{
+    void SendSms(Sms sms);
+    void SendEmail(Email email);
+}
+
+// Violates LSP: Throws NotImplementedException because AWS only handles Email
+public class AwsNotificationService : INotificationService
+{
+    public void SendEmail(Email email) { /* Send email */ }
+    public void SendSms(Sms sms) => throw new NotImplementedException();
+}
+
+// Violates LSP: Throws NotImplementedException because Vinaphone only handles SMS
+public class VinaphoneNotificationService : INotificationService
+{
+    public void SendEmail(Email email) => throw new NotImplementedException();
+    public void SendSms(Sms sms) { /* Send SMS */ }
+}
+
+public class UserService
+{
+    private readonly INotificationService _notificationService;
+    public UserService(INotificationService notificationService) => _notificationService = notificationService;
+
+    public void RegisterUser(...) => _notificationService.SendEmail(...); // Crashes if Vinaphone injected!
+    public void SendOtp(...) => _notificationService.SendSms(...);        // Crashes if AWS injected!
+}
+```
+
 #### After
+
+- Split contracts into focused interfaces: `IEmailNotificationService` and `ISmsNotificationService`.
+- Providers only implement interfaces they genuinely support (no `NotImplementedException`).
+- Providers supporting both (e.g. `AzureNotificationService`) can implement a composite interface `INotificationService : IEmailNotificationService, ISmsNotificationService`.
+- Consumers (`UserService`) depend only on what they actually use.
+
+```csharp
+// 1. Segregated interfaces
+public interface IEmailNotificationService
+{
+    void SendEmail(Email email);
+}
+
+public interface ISmsNotificationService
+{
+    void SendSms(Sms sms);
+}
+
+// 2. Composite interface for providers supporting both channels
+public interface INotificationService : IEmailNotificationService, ISmsNotificationService
+{
+}
+
+// 3. Single-channel implementations only implement what they support
+public class AwsNotificationService : IEmailNotificationService
+{
+    public void SendEmail(Email email) { /* Send email via AWS */ }
+}
+
+public class VinaphoneNotificationService : ISmsNotificationService
+{
+    public void SendSms(Sms sms) { /* Send SMS via Vinaphone */ }
+}
+
+// 4. Multi-channel implementation
+public class AzureNotificationService : INotificationService
+{
+    public void SendEmail(Email email) { /* Send email via Azure */ }
+    public void SendSms(Sms sms) { /* Send SMS via Azure */ }
+}
+
+// 5. Consumer depends strictly on needed interfaces
+public class UserService
+{
+    private readonly IEmailNotificationService _emailNotificationService;
+    private readonly ISmsNotificationService _smsNotificationService;
+
+    public UserService(
+        IEmailNotificationService emailNotificationService,
+        ISmsNotificationService smsNotificationService)
+    {
+        _emailNotificationService = emailNotificationService;
+        _smsNotificationService = smsNotificationService;
+    }
+
+    public void RegisterUser(string email, string phoneNumber)
+    {
+        _emailNotificationService.SendEmail(new Email("", "", "", ""));
+    }
+
+    public void SendOtp(string phoneNumber)
+    {
+        _smsNotificationService.SendSms(new Sms("", "", ""));
+    }
+}
+```
+
+##### Production DI Registration (Keyed Services & Instance Forwarding) to adhere LSP
+
+- Use **Keyed Services** when registering multiple implementations for the same interface.
+- Use **Forwarding** when a class implements multiple interfaces (like `AzureNotificationService`) to avoid instantiating multiple instances in the same scope.
+
+```csharp
+// Register single instance under key "azure"
+builder.Services.AddKeyedScoped<AzureNotificationService>("azure");
+
+// Forward all interfaces to the same instance (prevents 3 duplicate instances per scope)
+builder.Services.AddKeyedScoped<INotificationService>("azure",
+    (sp, key) => sp.GetRequiredKeyedService<AzureNotificationService>(key));
+
+builder.Services.AddKeyedScoped<IEmailNotificationService>("azure",
+    (sp, key) => sp.GetRequiredKeyedService<AzureNotificationService>(key));
+
+builder.Services.AddKeyedScoped<ISmsNotificationService>("azure",
+    (sp, key) => sp.GetRequiredKeyedService<AzureNotificationService>(key));
+
+// Register specific providers under keys
+builder.Services.AddKeyedScoped<IEmailNotificationService, AwsNotificationService>("aws");
+builder.Services.AddKeyedScoped<ISmsNotificationService, VinaphoneNotificationService>("vinaphone");
+```
 
 ### Interface Segregation Principle
 
