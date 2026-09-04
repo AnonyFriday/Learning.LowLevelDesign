@@ -3,11 +3,16 @@
     <Project Path="OOP/OOP.DemoProject/OOP.DemoProject.csproj" />
   </Folder>
   <Folder Name="/SOLID/">
-    <Project Path="SOLID/SOLID.D/SOLID.D.csproj" />
-    <Project Path="SOLID/SOLID.I/SOLID.I.csproj" />
-    <Project Path="SOLID/SOLID.L/SOLID.L.csproj" />
-    <Project Path="SOLID/SOLID.O/SOLID.O.csproj" />
-    <Project Path="SOLID/SOLID.S/SOLID.S.csproj" />
+    <Project Path="SOLID/SOLID.D.After/SOLID.D.After.csproj" />
+    <Project Path="SOLID/SOLID.D.Before/SOLID.D.Before.csproj" />
+    <Project Path="SOLID/SOLID.I.After/SOLID.I.After.csproj" />
+    <Project Path="SOLID/SOLID.I.Before/SOLID.I.Before.csproj" />
+    <Project Path="SOLID/SOLID.L.After/SOLID.L.After.csproj" />
+    <Project Path="SOLID/SOLID.L.Before/SOLID.L.Before.csproj" />
+    <Project Path="SOLID/SOLID.O.After/SOLID.O.After.csproj" />
+    <Project Path="SOLID/SOLID.O.Before/SOLID.O.Before.csproj" />
+    <Project Path="SOLID/SOLID.S.After/SOLID.S.After.csproj" />
+    <Project Path="SOLID/SOLID.S.Before/SOLID.S.Before.csproj" />
   </Folder>
   <Folder Name="/UML/">
     <Project Path="UML/UML.Aggregation/UML.Aggregation.csproj" />

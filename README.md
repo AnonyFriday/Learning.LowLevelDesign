@@ -342,11 +342,109 @@ classDiagram
 
 ## SOLID Principles
 
-### Loose Coupling
+Serve only for Loose Coupling & High Cohesion
 
-### High Cohesion
+### 1. Single Responsibility Principle (SRP)
 
-### Single Responsibility Principle
+- A class should have one, and only one, reason to change.
+- Aim: High Cohesion and Loose Coupling. Avoid "God Class" that handles multiple business concerns.
+
+#### Before
+
+- `CommonService` mixes multiple domains: User CRUD, Customer CRUD, Email notification, SMS notification.
+- Any change to email provider, SMS format, database schema, or customer rules forces change on this same class. High risk of breaking unrelated logic.
+
+```csharp
+// SOLID.S.Before/CommonService.cs - Violates SRP (God Class)
+internal class CommonService
+{
+    void AddUser(User user) { }
+    void UpdateUser(User oldUser, User newUser) { }
+    void DeleteUser(string id) { }
+    void AddCustomer(Customer customer) { }
+    void UpdateCustomer(Customer oldCustomer, Customer newCustomer) { }
+    void SendMessage(string fromEmail, string body, string toEmail, string fromNumber, string toNumber, string message)
+    {
+        if (!string.IsNullOrEmpty(fromEmail) && !string.IsNullOrEmpty(toEmail))
+        {
+            // Send email
+        }
+
+        // Send sms
+    }
+}
+```
+
+#### After
+
+- Separate responsibilities into dedicated classes by business capability:
+  - `UserService`: orchestrates User operations (validation, mapping, persistence call).
+  - `UserRepository`: handles data persistence logic for User.
+  - `CustomerService`: handles Customer domain logic.
+  - `EmailService`: handles Email communication.
+  - `SmsService`: handles SMS communication.
+
+```csharp
+// 1. Business domain separated: UserService.cs
+internal class UserService
+{
+    void AddUser(User user)
+    {
+        // 1. Validation
+        // 2. Request Cleaning
+        // 3. Delegate data persistence to repository
+        UserRepository userRepository = new UserRepository();
+        userRepository.AddUser(user);
+        // 4. Mapping Request to Response
+    }
+}
+
+// 2. Persistence concern separated: UserRepository.cs
+internal class UserRepository
+{
+    public void AddUser(User user) { /* Database access */ }
+    public void UpdateUser(User oldUser, User newUser) { }
+    public void DeleteUser(string id) { }
+}
+
+// 3. Customer domain separated: CustomerService.cs
+internal class CustomerService
+{
+    void AddCustomer(Customer customer) { }
+    void UpdateCustomer(Customer oldCustomer, Customer newCustomer) { }
+}
+
+// 4. Notification channels separated: EmailService.cs & SmsService.cs
+internal class EmailService
+{
+    void SendEmail(Email email) { }
+}
+
+internal class SmsService
+{
+    void SendSms(Sms sms) { }
+}
+```
+
+### Open/Closed Principle
+
+#### Before
+
+#### After
+
+### Liskov Substitution Principle
+
+#### Before
+
+#### After
+
+### Interface Segregation Principle
+
+#### Before
+
+#### After
+
+### Dependency Inversion Principle
 
 #### Before
 
