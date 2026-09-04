@@ -534,6 +534,7 @@ public class PaymentMethodHandlerFactory : IPaymentMethodHandlerFactory
 - Usage:
   - Make sure the contracts of the base class or interface must be usable for the derived class
   - Create extra interface captures that method.
+  - NO subclass throw "NotImplementedException" or changes expected behavior
 
 #### Before
 
@@ -666,11 +667,106 @@ builder.Services.AddKeyedScoped<ISmsNotificationService, VinaphoneNotificationSe
 
 ### Interface Segregation Principle
 
+- Clients (callers and implementers) should not be forced to depend on methods they do not use.
+- Prefer many small, client-specific interfaces over one large, general-purpose "fat" interface.
+- Difference from LSP:
+  - **LSP**: Focus on substitution behavior (subtype must follow base contract without crash).
+  - **ISP**: Focus on contract design / granularity (interface must be small, usable for subtype).
+
 #### Before
+
+- `INotificationService` is a fat interface containing both `SendEmail` and `SendSms`.
+- Classes only providing SMS (`VinaphoneNotificationService`) are forced to implement `SendEmail`.
+- Classes only providing Email (`AwsNotificationService`) are forced to implement `SendSms`.
+
+```csharp
+// Fat interface violates ISP
+public interface INotificationService
+{
+    void SendSms(Sms sms);
+    void SendEmail(Email email);
+}
+
+// Forced to implement SendSms which it does not support
+public class AwsNotificationService : INotificationService
+{
+    public void SendEmail(Email email) { /* Send email */ }
+    public void SendSms(Sms sms) => throw new NotImplementedException();
+}
+
+// Forced to implement SendEmail which it does not support
+public class VinaphoneNotificationService : INotificationService
+{
+    public void SendEmail(Email email) => throw new NotImplementedException();
+    public void SendSms(Sms sms) { /* Send SMS */ }
+}
+```
 
 #### After
 
+- Segregate the fat interface into smaller, cohesive role interfaces: `IEmailNotificationService` and `ISmsNotificationService`.
+- Providers only implement interfaces containing methods they actually support.
+- Providers supporting both channels combine interfaces (`INotificationService : IEmailNotificationService, ISmsNotificationService`).
+- Consumer classes inject only the specific interface required for their job.
+
+```csharp
+// 1. Client-specific, segregated interfaces
+public interface IEmailNotificationService
+{
+    void SendEmail(Email email);
+}
+
+public interface ISmsNotificationService
+{
+    void SendSms(Sms sms);
+}
+
+// 2. Composite interface (for providers supporting both channels)
+public interface INotificationService : IEmailNotificationService, ISmsNotificationService
+{
+}
+
+// 3. Classes only implement methods they actually provide
+public class AwsNotificationService : IEmailNotificationService
+{
+    public void SendEmail(Email email) { /* Send email */ }
+}
+
+public class VinaphoneNotificationService : ISmsNotificationService
+{
+    public void SendSms(Sms sms) { /* Send SMS */ }
+}
+
+public class AzureNotificationService : INotificationService
+{
+    public void SendEmail(Email email) { /* Send email */ }
+    public void SendSms(Sms sms) { /* Send SMS */ }
+}
+
+// 4. Consumer injects only what is necessary
+public class UserService
+{
+    private readonly IEmailNotificationService _emailService;
+    private readonly ISmsNotificationService _smsService;
+
+    public UserService(
+        IEmailNotificationService emailService,
+        ISmsNotificationService smsService)
+    {
+        _emailService = emailService;
+        _smsService = smsService;
+    }
+
+    public void RegisterUser(string email, string phoneNumber) => _emailService.SendEmail(new Email("", "", "", ""));
+    public void SendOtp(string phoneNumber) => _smsService.SendSms(new Sms("", "", ""));
+}
+```
+
 ### Dependency Inversion Principle
+
+- High-level modules (class) should not depends on low-level modules (class). Both should depends on abstaction (interface).
+- Abstractions should not depend upon details
+- Details should depend upon abstractions.
 
 #### Before
 

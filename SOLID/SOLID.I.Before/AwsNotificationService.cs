@@ -1,4 +1,4 @@
-namespace SOLID.L.Before;
+namespace SOLID.I.Before;
 
 public class AwsNotificationService : INotificationService
 {
@@ -8,7 +8,6 @@ public class AwsNotificationService : INotificationService
     }
 
     // Since the substype does not support sending SMS, we do not implement the behavior in here
-    // throw NotImplementedException is a code smell, but we are forced to do it because of the interface contract
     public void SendSms(Sms sms)
     {
         throw new NotImplementedException();
