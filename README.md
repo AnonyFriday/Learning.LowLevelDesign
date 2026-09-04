@@ -539,3 +539,7 @@ public class PaymentMethodHandlerFactory : IPaymentMethodHandlerFactory
 #### Before
 
 #### After
+
+## References
+
+- [Practical.SOLID by phongnguyend](https://github.com/phongnguyend/Practical.SOLID)
