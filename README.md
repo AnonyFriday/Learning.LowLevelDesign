@@ -764,13 +764,86 @@ public class UserService
 
 ### Dependency Inversion Principle
 
-- High-level modules (class) should not depends on low-level modules (class). Both should depends on abstaction (interface).
-- Abstractions should not depend upon details
-- Details should depend upon abstractions.
+- High-level modules (business logic) should not depend on low-level modules (technical details). Both should depend on abstractions (interfaces).
+- Abstractions should not depend on details. Details should depend on abstractions.
+- Simple analogy:
+  - **High-level (Boss)**: `UserService` (decides _what_ to do: register user, send welcome message).
+  - **Low-level (Tool)**: `SmtpNotificationService` (decides _how_ to do it: network protocol, ports, sockets).
+  - Boss should never tie hands to one specific tool. Depend on contract (`IEmailNotificationService`) so tool can swap anytime.
 
 #### Before
 
+- `UserService` directly depends on concrete class `SmtpNotificationService`.
+- Tightly coupled: switching from SMTP to POP3, IMAP, or SendGrid requires changing `UserService` code.
+- Hard to unit test: cannot mock concrete `SmtpNotificationService`.
+
+```csharp
+// Low-level module (concrete detail)
+internal class SmtpNotificationService
+{
+    public void SendEmail(Email email)
+    {
+        // Logic to send email via SMTP
+    }
+}
+
+// High-level module (business logic)
+// Problem: Tightly coupled to concrete SmtpNotificationService!
+internal class UserService(SmtpNotificationService smtpNotificationService)
+{
+    public void RegisterUser(User user)
+    {
+        var message = "Welcome to our service!";
+        smtpNotificationService.SendEmail(new Email(user.Email, "Welcome!", message));
+    }
+}
+```
+
 #### After
+
+- Introduce abstraction: `IEmailNotificationService`.
+- Both `UserService` and concrete providers depend on `IEmailNotificationService`.
+- Loosely coupled: switch providers (SMTP, POP3) without touching a single line inside `UserService`.
+- Unit test friendly: easy to inject fake/mock interface.
+
+```csharp
+// 1. Abstraction (contract both sides agree on)
+internal interface IEmailNotificationService
+{
+    void SendEmail(Email email);
+}
+
+// 2. Low-level modules implement abstraction
+internal class SmtpNotificationService : IEmailNotificationService
+{
+    public void SendEmail(Email email)
+    {
+        // Logic to send email via SMTP
+    }
+}
+
+internal class Pop3NotificationService : IEmailNotificationService
+{
+    public void SendEmail(Email email)
+    {
+        // Logic to send email via POP3
+    }
+}
+
+// 3. High-level module depends ONLY on abstraction
+internal class UserService(IEmailNotificationService emailNotificationService)
+{
+    public void RegisterUser(User user)
+    {
+        var message = "Welcome to our service!";
+        emailNotificationService.SendEmail(new Email(user.Email, "Welcome!", message));
+    }
+}
+
+// 4. Usage: Swap implementations freely at runtime
+var userServiceSmtp = new UserService(new SmtpNotificationService());
+var userServicePop3 = new UserService(new Pop3NotificationService());
+```
 
 ## References
 
