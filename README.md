@@ -428,9 +428,99 @@ internal class SmsService
 
 ### Open/Closed Principle
 
+- Software Entities (classes, modules, functions, etc.) should be open for extension but closed for modification.
+- Adding new code rather than changing existing code.
+- Things frequently changess, seperated from the part of things that don't change.
+- Things that don't change, do not touch.
+
 #### Before
 
+- If I want to add extra payment method, i have to modify the method Pay for extra usecase
+- Easily to breakdown the same method (git conflict, destroy the flow of logic, etc...)
+
+```csharp
+public enum PaymentMethod
+{
+    Cash = 1,
+    DebitCard = 2,
+    PayPal = 3,
+    Unknown = 4
+}
+
+public class PaymentService
+{
+    public void Pay(Guid orderId, PaymentMethod paymentMethod)
+    {
+        switch (paymentMethod)
+        {
+            case PaymentMethod.Cash:
+                // Process credit card payment
+                break;
+            case PaymentMethod.DebitCard:
+                // Process debit card payment
+                break;
+            case PaymentMethod.PayPal:
+                // Process PayPal payment
+                break;
+            case PaymentMethod.Unknown:
+            default:
+                break;
+        }
+    }
+}
+```
+
 #### After
+
+- Apply the Factory Pattern
+- For each usecase, derived the same interface, consider as the `small gateway` to determine which object is gonna used for the payment method, determined by PaymentMethod type passed into.
+
+```csharp
+public interface IPaymentMethodHandler
+{
+    public void Handle();
+}
+
+public class CashPaymentMethodHandler : IPaymentMethodHandler
+{
+    public void Handle() { }
+}
+
+public class DebitCardPaymentMethodHandler : IPaymentMethodHandler
+{
+    public void Handle() { }
+}
+
+public class PayPalPaymentMethodHandler : IPaymentMethodHandler
+{
+    public void Handle() { }
+}
+
+public class UnknownPaymentMethodHandler : IPaymentMethodHandler
+{
+    public void Handle() { }
+}
+
+public interface IPaymentMethodHandlerFactory
+{
+    IPaymentMethodHandler GetPaymentMethodHandler(PaymentMethod paymentMethod);
+}
+
+public class PaymentMethodHandlerFactory : IPaymentMethodHandlerFactory
+{
+    public IPaymentMethodHandler GetPaymentMethodHandler(PaymentMethod paymentMethod)
+    {
+        return paymentMethod switch
+        {
+            PaymentMethod.Cash => new CashPaymentMethodHandler(),
+            PaymentMethod.DebitCard => new DebitCardPaymentMethodHandler(),
+            PaymentMethod.PayPal => new PayPalPaymentMethodHandler(),
+            PaymentMethod.Unknown => new UnknownPaymentMethodHandler(),
+            _ => new UnknownPaymentMethodHandler()
+        };
+    }
+}
+```
 
 ### Liskov Substitution Principle
 
