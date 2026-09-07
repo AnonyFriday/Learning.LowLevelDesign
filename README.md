@@ -924,6 +924,110 @@ var report = new FluentReportBuilder()
 - **Before:**
 - **After:**
 
+### Factory Pattern (Creational)
+
+- Benefit: Outsource object creation logic. Overcome constructor limitations (no descriptive names, no async constructors, signature collisions).
+- Core structure:
+  - Product interface / class
+  - Factory method or dedicated Factory class
+  - Encapsulated instantiation (`new` hidden behind factory contract)
+
+#### 1. Factory Method
+
+Outsource object creation logic to dedicated factory method / factory abstraction.
+
+- **Problem (Before):** `NotificationService` violates SRP and OCP. Directly instantiates concrete sender classes inside `switch` statement. Adding new channel requires modifying existing service.
+
+```csharp
+// DesignPatterns/Creational/Factory/Factory.Before/NotificationService.cs
+public class NotificationService
+{
+    public void RunMigration(NotificationChannelType migrationType, string recipient, string message)
+    {
+        INotificationSender sender;
+
+        switch (migrationType)
+        {
+            case NotificationChannelType.Email:
+                sender = new EmailNotificationSender();
+                break;
+            case NotificationChannelType.SMS:
+                sender = new SmsNotificationSender();
+                break;
+            case NotificationChannelType.PushNotification:
+                sender = new PushNotificationSender();
+                break;
+            case NotificationChannelType.Slack:
+                sender = new SlackNotificationSender();
+                break;
+            default:
+                throw new ArgumentException("Invalid migration type");
+        }
+
+        sender.Send(recipient, message);
+    }
+}
+```
+
+- **Solution (After):** `INotificationSenderFactory` encapsulates instantiation. Consumer (`PaymentService`) depends on abstraction, decoupled from concrete sender creation.
+
+```csharp
+// 1. Factory Interface & Implementation
+// DesignPatterns/Creational/Factory/Factory.After/NotificationSenders/INotificationSenderFactory.cs
+internal interface INotificationSenderFactory
+{
+    public INotificationSender CreateSender(NotificationSenderType notificationSenderType);
+}
+
+// DesignPatterns/Creational/Factory/Factory.After/NotificationSenders/NotificationSenderFactory.cs
+internal class NotificationSenderFactory : INotificationSenderFactory
+{
+    public INotificationSender CreateSender(NotificationSenderType notificationSenderType)
+    {
+        return notificationSenderType switch
+        {
+            NotificationSenderType.Email => new EmailNotificationSender(),
+            NotificationSenderType.SMS => new SmsNotificationSender(),
+            NotificationSenderType.PushNotification => new PushNotificationSender(),
+            _ => throw new ArgumentException("Invalid notification sender type")
+        };
+    }
+}
+
+// 2. Consumer delegates creation to factory
+// DesignPatterns/Creational/Factory/Factory.After/PaymentService.cs
+internal class PaymentService(INotificationSenderFactory notificationSenderFactory)
+{
+    public Response Handler(Request orgRequest)
+    {
+        var request = orgRequest with { NotificationChannelType = orgRequest.NotificationChannelType };
+        var notificationSender = notificationSenderFactory.CreateSender(request.NotificationChannelType);
+        notificationSender.Send(request.customerName.ToString(), "Payment processed successfully.");
+        return new Response("Payment processed successfully.");
+    }
+}
+```
+
+#### 2. Asynchronous Factory Method
+
+- **Before:**
+- **After:**
+
+#### 3. Inner Factory
+
+- **Before:**
+- **After:**
+
+#### 4. Abstract Factory and OCP
+
+- **Before:**
+- **After:**
+
+#### 5. Object Tracking and Bulk Replacement
+
+- **Before:**
+- **After:**
+
 ## References
 
 - [Practical.SOLID by phongnguyend](https://github.com/phongnguyend/Practical.SOLID)
