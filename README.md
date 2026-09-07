@@ -845,6 +845,85 @@ var userServiceSmtp = new UserService(new SmtpNotificationService());
 var userServicePop3 = new UserService(new Pop3NotificationService());
 ```
 
+## Design Patterns
+
+### Builder Pattern (Creational)
+
+- Benefit: Avoid **Telescoping Constructor** anti-pattern (constructor explosion with multiple parameter combinations).
+- Core structure:
+  - Target Entity class
+  - Builder class / interface pipeline
+  - Terminal construction step (`Build()`)
+
+#### 1. Standard Fluent Builder
+
+Chain method calls on single builder instance returning `this`.
+
+- **Problem (Before):** Telescoping constructors. Caller forced to supply default values or decode boolean flags.
+
+```csharp
+// DesignPatterns/Creational/Builder/Builder.Before/Report.cs
+public class Report
+{
+    public string Title { get; set; }
+    public string Content { get; set; }
+    public string Footer { get; set; }
+    public bool IncludeCharts { get; set; }
+    public bool IncludeSummary { get; set; }
+
+    public Report(string title, string content) { ... }
+    public Report(string title, string content, string footer) { ... }
+    public Report(string title, string content, bool includeCharts, bool includeSummary) { ... }
+}
+
+// Caller: hard to read, unreadable boolean parameters
+var report = new Report("Monthly Report", "Content...", true, false);
+```
+
+- **Solution (After):** Fluent setter methods return `this`. Private target instance isolated per builder.
+
+```csharp
+// DesignPatterns/Creational/Builder/Builder.After/Reports/FluentReportBuilder.cs
+public sealed class FluentReportBuilder
+{
+    private readonly Report _report = new();
+
+    public FluentReportBuilder SetTitle(string title) { _report.Title = title; return this; }
+    public FluentReportBuilder SetContent(string content) { _report.Content = content; return this; }
+    public FluentReportBuilder SetFooter(string footer) { _report.Footer = footer; return this; }
+    public FluentReportBuilder SetIncludeCharts(bool include) { _report.IncludeCharts = include; return this; }
+    public FluentReportBuilder SetIncludeSummary(bool include) { _report.IncludeSummary = include; return this; }
+    public Report Build() => _report;
+}
+
+// Caller: clear, expressive chaining
+var report = new FluentReportBuilder()
+    .SetTitle("Monthly Report")
+    .SetContent("Content...")
+    .SetIncludeCharts(true)
+    .Build();
+```
+
+#### 2. Fluent Builder Inheritance with Recursive Generics
+
+- **Before:**
+- **After:**
+
+#### 3. Stepwise Builder
+
+- **Before:**
+- **After:**
+
+#### 4. Functional Builder
+
+- **Before:**
+- **After:**
+
+#### 5. Faceted Builder
+
+- **Before:**
+- **After:**
+
 ## References
 
 - [Practical.SOLID by phongnguyend](https://github.com/phongnguyend/Practical.SOLID)
