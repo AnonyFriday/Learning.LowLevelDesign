@@ -1332,3 +1332,4 @@ internal class Program
 ## References
 
 - [Practical.SOLID by phongnguyend](https://github.com/phongnguyend/Practical.SOLID)
+- [Mastering the Observer Pattern in C#: From Basics to Advanced Scenarios by shanto462](https://medium.com/@shanto462/mastering-the-observer-pattern-in-c-from-basics-to-advanced-scenarios-dbd4c3a5ac55)
