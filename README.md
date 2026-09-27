@@ -1171,8 +1171,163 @@ internal partial class Program
 
 #### 2. Classic Observer (`IObservable<T>` / `IObserver<T>`)
 
-- **Before:**
-- **After:**
+Push-based stream provider and consumer interfaces built into .NET (foundation of Reactive Extensions / Rx.NET).
+
+- **Advantages over plain C# `event`**:
+  - **Explicit Stream Completion**: `OnCompleted()` signals subscribers that stream ended (no equivalent in native events).
+  - **Structured Error Notification**: `OnError(Exception)` propagates exceptions downstream.
+  - **Deterministic Lifetime / Unsubscription**: `Subscribe()` returns `IDisposable`; disposing cancels subscription without needing to reference both sender and handler delegate.
+
+- **Step 1: Stream Event Data**
+  - Data transfer object pushed through the stream.
+
+```csharp
+// DesignPatterns/Behavioural/Observer.Observable/Events/VideoEncodedEventArgs.cs
+public class VideoEncodedEventArgs
+{
+    public string Title { get; }
+    public int DurationInSeconds { get; }
+    public DateTimeOffset EndTime { get; }
+
+    public VideoEncodedEventArgs(string title, int durationInSeconds, DateTimeOffset endTime)
+    {
+        Title = title;
+        DurationInSeconds = durationInSeconds;
+        EndTime = endTime;
+    }
+}
+```
+
+- **Step 2: Observable Provider (`VideoEncoder`) & Disposable Unsubscriber**
+  - Implements `IObservable<VideoEncodedEventArgs>`.
+  - Tracks observer list and returns `IDisposable` from `Subscribe`.
+  - Notifies observers via `OnNext`, catches errors to send `OnError`, and finalizes with `OnCompleted`.
+
+```csharp
+// DesignPatterns/Behavioural/Observer.Observable/Observables/VideoEncoder.cs
+public class VideoEncoder : IObservable<VideoEncodedEventArgs>
+{
+    private readonly List<IObserver<VideoEncodedEventArgs>> _observers = new();
+
+    public IDisposable Subscribe(IObserver<VideoEncodedEventArgs> observer)
+    {
+        if (!_observers.Contains(observer))
+            _observers.Add(observer);
+        return new Unsubscriber(_observers, observer);
+    }
+
+    private class Unsubscriber(List<IObserver<VideoEncodedEventArgs>> observers, IObserver<VideoEncodedEventArgs> observer) : IDisposable
+    {
+        private readonly List<IObserver<VideoEncodedEventArgs>> _observers = observers;
+        private readonly IObserver<VideoEncodedEventArgs> _observer = observer;
+
+        public void Dispose()
+        {
+            if (_observer != null && _observers.Contains(_observer))
+                _observers.Remove(_observer);
+        }
+    }
+
+    public async Task Encode(string videoTitle, int durationInSeconds)
+    {
+        var startTime = DateTimeOffset.Now;
+        Console.WriteLine($"[VideoEncoder]: Encoding video '{videoTitle}' for {durationInSeconds} seconds...");
+
+        await Task.Delay(durationInSeconds * 1000);
+        var endTime = DateTimeOffset.Now;
+
+        var eventArgs = new VideoEncodedEventArgs(videoTitle, durationInSeconds, endTime);
+        foreach (var observer in _observers)
+        {
+            try
+            {
+                observer.OnNext(eventArgs);
+            }
+            catch (Exception ex)
+            {
+                observer.OnError(ex);
+            }
+            await Task.Delay(1000);
+        }
+
+        // Explicitly signals subscribers that stream has completed
+        foreach (var observer in _observers)
+        {
+            observer.OnCompleted();
+        }
+    }
+}
+```
+
+- **Step 3: Observer Consumer (`NotificationService`)**
+  - Implements `IObserver<VideoEncodedEventArgs>`.
+  - Retains returned `IDisposable` token to detach cleanly whenever needed.
+
+```csharp
+// DesignPatterns/Behavioural/Observer.Observable/Observers/NotificationService.cs
+public class NotificationService(string serviceName) : IObserver<VideoEncodedEventArgs>
+{
+    private readonly string _serviceName = serviceName;
+    private IDisposable? _unsubscriber;
+
+    public void Unsubscribe()
+    {
+        _unsubscriber?.Dispose();
+    }
+
+    public void Subscribe(IObservable<VideoEncodedEventArgs> provider)
+    {
+        if (provider != null)
+            _unsubscriber = provider.Subscribe(this);
+    }
+
+    public void OnCompleted()
+    {
+        return;
+    }
+
+    public void OnError(Exception error)
+    {
+        Console.WriteLine($"[NotificationService]: Error occurred - {error.Message}");
+    }
+
+    public void OnNext(VideoEncodedEventArgs value)
+    {
+        SendEmail("admin@example.com", "All videos encoded", "All videos have been encoded successfully.");
+    }
+
+    private void SendEmail(string emailAddress, string subject, string body)
+    {
+        Console.WriteLine($"[{_serviceName}]: Sending to {emailAddress} — subject: '{subject}'");
+    }
+}
+```
+
+- **Step 4: Subscription & Execution (`Program.cs`)**
+  - Connects observables and observers, tests encoding stream, and demonstrates disposal unsubscription.
+
+```csharp
+// DesignPatterns/Behavioural/Observer.Observable/Program.cs
+internal class Program
+{
+    private static async Task Main(string[] args)
+    {
+        var encoder = new VideoEncoder();
+
+        var emailService = new NotificationService("Email");
+        var outlookService = new NotificationService("Outlook");
+
+        emailService.Subscribe(encoder);
+        outlookService.Subscribe(encoder);
+
+        await encoder.Encode("MyVideo", 5);
+
+        // Disposing unsubscriber stops further notifications to emailService
+        emailService.Unsubscribe();
+        await encoder.Encode("MyVideo2", 3);
+    }
+}
+```
 
 ## References
 
