@@ -932,7 +932,7 @@ var report = new FluentReportBuilder()
   - Factory method or dedicated Factory class
   - Encapsulated instantiation (`new` hidden behind factory contract)
 
-#### 1. Factory Method
+#### 1. Simple Factory Method
 
 Outsource object creation logic to dedicated factory method / factory abstraction.
 
@@ -970,6 +970,7 @@ public class NotificationService
 ```
 
 - **Solution (After):** `INotificationSenderFactory` encapsulates instantiation. Consumer (`PaymentService`) depends on abstraction, decoupled from concrete sender creation.
+  - Violate the OCP, but acceptable since the modification is just creating new implmenetation of the class
 
 ```csharp
 // 1. Factory Interface & Implementation
@@ -1008,22 +1009,167 @@ internal class PaymentService(INotificationSenderFactory notificationSenderFacto
 }
 ```
 
-#### 2. Asynchronous Factory Method
+#### 2. Abstract Factory and OCP
 
 - **Before:**
 - **After:**
 
-#### 3. Inner Factory
+#### 3. Asynchronous Factory Method
 
 - **Before:**
 - **After:**
 
-#### 4. Abstract Factory and OCP
+#### 4. Inner Factory
 
 - **Before:**
 - **After:**
 
 #### 5. Object Tracking and Bulk Replacement
+
+- **Before:**
+- **After:**
+
+### Observer Pattern (Behavioural)
+
+- Benefit: Defines a one-to-many dependency between objects so that when one object (Publisher/Subject) changes state or triggers an action, all its dependents (Subscribers/Observers) are notified and updated automatically without tight coupling.
+- Core structure:
+  - **Event Data (`EventArgs`)**: DTO holding payload data passed during invocation.
+  - **Publisher**: Exposes `event EventHandler<TEventArgs>` and raises notifications via protected virtual methods (`OnEventName`).
+  - **Subclass Extensibility (Hooks)**: Derived publishers can override event-raising methods to plug in custom cross-cutting concerns (e.g. logging) before or after delegating to `base.OnEventName()`.
+  - **Subscriber**: Encapsulates receiver business logic, exposing handler methods with signatures matching `(object? source, TEventArgs e)`.
+  - **Subscription**: Wires publishers and subscribers at runtime using delegate registration operators (`+=` / `-=`).
+
+#### 1. Event-Driven Pub/Sub (`Observer.PubSub`)
+
+Decouples processing pipelines from side-effects and notifications using native C# events and delegates.
+
+- **Step 1: Event Data (`EventArgs`)**
+  - Inherits from `EventArgs` to encapsulate domain data emitted with the event.
+
+```csharp
+// DesignPatterns/Behavioural/Observer.PubSub/Events/VideoEncodedEventArgs.cs
+public class VideoEncodedEventArgs : EventArgs
+{
+    public string Title { get; } = string.Empty;
+    public int DurationInSeconds { get; }
+    public DateTimeOffset EndTime { get; }
+
+    public VideoEncodedEventArgs(string title, int duration, DateTimeOffset endTime)
+    {
+        Title = title;
+        DurationInSeconds = duration;
+        EndTime = endTime;
+    }
+}
+```
+
+- **Step 2: Publisher (`VideoEncoder`) & Extensibility Hook (`LoggingVideoEncoder`)**
+  - Exposes `event EventHandler<TEventArgs>`.
+  - Implements thread-safe event invocation pattern (capturing local snapshot of handler prior to `Invoke` to guard against race conditions if subscribers detach concurrently on another thread).
+  - Derived classes (e.g., `LoggingVideoEncoder`) override `OnVideoEncoded` as a hook to inject logging without altering the base encoding pipeline.
+
+```csharp
+// DesignPatterns/Behavioural/Observer.PubSub/Publishers/VideoEncoder.cs
+public class VideoEncoder
+{
+    public event EventHandler<VideoEncodedEventArgs>? VideoEncoded;
+    public event EventHandler<VideoEncodingStartedEventArgs>? VideoEncodingStarted;
+
+    public void Encode(string videoTitle, int durationInSeconds)
+    {
+        var startTime = DateTimeOffset.Now;
+        OnVideoEncodingStarted(new VideoEncodingStartedEventArgs(videoTitle, durationInSeconds, startTime));
+        Console.WriteLine($"[VideoEncoder]: Encoding video '{videoTitle}' for {durationInSeconds} seconds...");
+
+        Thread.Sleep(durationInSeconds * 1000);
+
+        var endTime = startTime.AddSeconds(durationInSeconds);
+        OnVideoEncoded(new VideoEncodedEventArgs(videoTitle, durationInSeconds, endTime));
+    }
+
+    protected virtual void OnVideoEncoded(VideoEncodedEventArgs e)
+    {
+        // Snapshot into a local var, THEN null-conditional invoke
+        // Protects against a subscriber unsubscribing on another thread between the null check and the invocation
+        var handler = VideoEncoded;
+        handler?.Invoke(this, e);
+    }
+
+    protected virtual void OnVideoEncodingStarted(VideoEncodingStartedEventArgs e)
+    {
+        var handler = VideoEncodingStarted;
+        handler?.Invoke(this, e);
+    }
+}
+
+// DesignPatterns/Behavioural/Observer.PubSub/Publishers/LoggingVideoEncoder.cs
+public class LoggingVideoEncoder : VideoEncoder
+{
+    protected override void OnVideoEncoded(VideoEncodedEventArgs e)
+    {
+        Console.WriteLine("[Logging]: <Log>This video ended, I will write down onto the log source.</Log>");
+        base.OnVideoEncoded(e);
+    }
+}
+```
+
+- **Step 3: Subscriber (`NotificationService`)**
+  - Exposes callback methods matching the `EventHandler<TEventArgs>` signature (`void (object? source, TEventArgs e)`).
+
+```csharp
+// DesignPatterns/Behavioural/Observer.PubSub/Subcribers/NotificationService.cs
+public class NotificationService
+{
+    public void PrepareEmail(string emailAddress, string subject, string body)
+    {
+        Console.WriteLine("[NotificationService]: Preparing email to {0} with subject '{1}' and body '{2}'", emailAddress, subject, body);
+    }
+
+    public void SendEmail(string emailAddress, string subject, string body)
+    {
+        Console.WriteLine("[Email]: Sending email to {0} with subject '{1}' and body '{2}'", emailAddress, subject, body);
+        Thread.Sleep(5000);
+        Console.WriteLine("[Email]: Email sent to {0}", emailAddress);
+    }
+
+    // Subscriber reacts after receiving the event
+    public void OnVideoEncodingStarted(object? source, VideoEncodingStartedEventArgs e)
+    {
+        Console.WriteLine(nameof(PrepareEmail));
+    }
+
+    public void OnVideoEncoded(object? source, VideoEncodedEventArgs e)
+    {
+        Console.WriteLine(nameof(SendEmail));
+        SendEmail("duyvukim@gmail.com", $"Video Encoding Started: {e.Title}", $"The video ended at: {e.EndTime}");
+    }
+}
+```
+
+- **Step 4: Subscription & Execution (`Program.cs`)**
+  - Subscribes handlers dynamically via `+=` (any method matching the signature can attach).
+
+```csharp
+// DesignPatterns/Behavioural/Observer.PubSub/Program.cs
+internal partial class Program
+{
+    public static void Main(string[] args)
+    {
+        var notificationService = new NotificationService();
+        var loggingVideoEncoder = new LoggingVideoEncoder();
+
+        // As long as matching the same signature, the method can be subscribed to the event
+        loggingVideoEncoder.VideoEncodingStarted += notificationService.OnVideoEncodingStarted;
+        loggingVideoEncoder.VideoEncoded += notificationService.OnVideoEncoded;
+
+        loggingVideoEncoder.Encode("FUNNY", 6);
+
+        Console.ReadLine();
+    }
+}
+```
+
+#### 2. Classic Observer (`IObservable<T>` / `IObserver<T>`)
 
 - **Before:**
 - **After:**
